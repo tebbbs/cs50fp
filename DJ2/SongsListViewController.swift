@@ -8,38 +8,49 @@
 
 import UIKit
 
+// Controls the library view, a lists of all the user's songs
 class SongsListViewController: UITableViewController {
     
     var songs: [Song] = []
-
+    
+    var searchResults: [Song] = []
+    let searchController = UISearchController(searchResultsController: nil)
+    var isSearchBarEmpty: Bool {
+      return searchController.searchBar.text?.isEmpty ?? true
+    }
+    var isFiltering: Bool {
+      return searchController.isActive && !isSearchBarEmpty
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
-        //searchBar.delegate = self
+        searchController.searchResultsUpdater = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search songs"
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
         
+        // Demo code - no need to delete databse for regular use
         deleteDB()
+        
         ArtistManager.shared.connect()
         AlbumManager.shared.connect()
         SongManager.shared.connect()
         TransitionManager.shared.connect()
-
-        print(SongManager.shared.insertSong(title: "Tour", artist: "Macky Gee", album: "Moments", year: 2018))
-        print(SongManager.shared.insertSong(title: "Heavy and Dark (Bou & Simula Mix)", artist: "MC Bassman", album: "Heavy and Dark", year: 2019))
-        print(SongManager.shared.insertSong(title: "Mr Happy", artist: "DJ Hazard", album: "Super Drunk", year: 2012))
-        print(SongManager.shared.insertSong(title: "Bricks Don't Roll", artist: "DJ Hazard", album: "Bricks Don't Roll EP", year: 2014))
-        print("Hazard artist id: \(ArtistManager.shared.getArtistID(name: "DJ Hazard"))")
         
+        // Add demo songs to database
+        SongManager.shared.insertSong(title: "Tour", artist: "Macky Gee", album: "Moments", year: 2018)
+        SongManager.shared.insertSong(title: "Heavy and Dark (Bou & Simula Mix)", artist: "MC Bassman", album: "Heavy and Dark", year: 2019)
+        SongManager.shared.insertSong(title: "Mr Happy", artist: "DJ Hazard", album: "Super Drunk", year: 2012)
+        SongManager.shared.insertSong(title: "Bricks Don't Roll", artist: "DJ Hazard", album: "Bricks Don't Roll EP", year: 2014)
         SongManager.shared.insertSong(title: "If We Ever", artist: "High Contrast", album: "Tough Guys Don't Dance", year: 2007)
         reload()
         
-        
-        let tour = songs[0]
-        let mrh = songs[2]
-        let bdr = songs[3]
-        
-        let iwe = songs[4]
-        
+        // Add demo transitions to database
+        let tour = getSongByName(title: "Tour")!
+        let mrh = getSongByName(title: "Mr Happy")!
+        let bdr = getSongByName(title: "Bricks Don't Roll")!
+        let iwe = getSongByName(title: "If We Ever")!
         
         TransitionManager.shared.insertTransition(from: tour, to: mrh)
         TransitionManager.shared.insertTransition(from: tour, to: bdr)
@@ -49,6 +60,7 @@ class SongsListViewController: UITableViewController {
     }
     
     func reload() {
+        // Get all songs from the databse and display
         songs = SongManager.shared.getSongs()
         tableView.reloadData()
     }
@@ -63,22 +75,40 @@ class SongsListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return songs.count
+        if isFiltering {
+            return searchResults.count
+        }
+        else {
+            return songs.count
+        }
     }
     
+    
+    // Sets up song sells for displays on table
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         tableView.rowHeight = 72
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "SongCell", for: indexPath) as! SongTableViewCell
         
-        cell.titleLabel.text = songs[indexPath.row].title
-        cell.infoLabel.text = "\(songs[indexPath.row].artist.name) | \(songs[indexPath.row].album.title)"
-        cell.yearLabel.text = String(songs[indexPath.row].year)
+        let song: Song
+        
+        if isFiltering {
+            song = searchResults[indexPath.row]
+        }
+        else {
+            song = songs[indexPath.row]
+        }
+        
+        cell.titleLabel.text = song.title
+        cell.infoLabel.text = "\(song.artist.name) | \(song.album.title)"
+        cell.yearLabel.text = String(song.year)
 
         
         return cell
     }
     
+    // Called when user swipes to delete song, only available on the default view i.e. not for search results.
+    // Deleting from search results is a feature I plan to add in the future
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             SongManager.shared.delete(song: songs[indexPath.row])
@@ -87,27 +117,23 @@ class SongsListViewController: UITableViewController {
         }
     }
     
-    /*
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        // Empty list of search results
-        searchResults = []
-        for song in songs {
-            if song.title.range(of: searchText, options: .caseInsensitive) != nil
-            || song.artist.name.range(of: searchText, options: .caseInsensitive) != nil
-            || song.album.title.range(of: searchText, options: .caseInsensitive) != nil
-            || String(song.year).range(of: searchText, options: .caseInsensitive) != nil {
-                // Match found, add to search results
-                searchResults.append(song)
-            }
-        }
-        
-        // Reload view
-        DispatchQueue.main.async {
-            self.tableView.reloadData()
-        }
+    // Called when the user searches for a song. Songs with matching titles, artist names, album titles or year are returned
+    func filterContentForSearchText(_ searchText: String) {
+      searchResults = songs.filter { (song: Song) -> Bool in
+        return song.title.range(of: searchText, options: .caseInsensitive) != nil
+        || song.artist.name.range(of: searchText, options: .caseInsensitive) != nil
+        || song.album.title.range(of: searchText, options: .caseInsensitive) != nil
+        || String(song.year).range(of: searchText, options: .caseInsensitive) != nil
+      }
+      tableView.reloadData()
     }
-    */
     
+    // Indicates that only non search result cells can be deleted
+    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        return !isFiltering
+    }
+    
+    // Deletes the database
     func deleteDB() {
         let filemManager = FileManager.default
         do {
@@ -118,13 +144,13 @@ class SongsListViewController: UITableViewController {
                 create: false
             ).appendingPathComponent("music.sqlite")
             try filemManager.removeItem(at: databaseURL as URL)
-            print("Database Deleted!")
+            //print("Database Deleted!")
         } catch {
             print("Error on Delete Database!!!")
         }
     }
     
-
+    // Displays a dialogue box for the user to enter information for a new song
     @IBAction func buttonPopup(_ sender: UIButton) {
         let alertController = UIAlertController(title: "New Song", message: "Enter title, artist, album and year", preferredStyle: .alert)
         
@@ -137,6 +163,7 @@ class SongsListViewController: UITableViewController {
             
             let year = Int(yearString!) ?? 0
             
+            // Validates user input and displays an errror message if they have left fields empty or entered an invalid year
             if !title!.isEmpty && !artist!.isEmpty && !album!.isEmpty && year > 1900 && year <= Calendar.current.component(.year, from: Date()) {
                 SongManager.shared.insertSong(title: title!, artist: artist!, album: album!, year: year)
                 self.reload()
@@ -170,14 +197,42 @@ class SongsListViewController: UITableViewController {
         self.present(alertController, animated: true, completion: nil)
     }
 
+    // Prepares the transition list view with the correct song
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "TransitionSegue",
                 let destination = segue.destination as? TransitionsListViewController,
                 let index = tableView.indexPathForSelectedRow?.row {
-            destination.title = songs[index].title
-            destination.fromSong = songs[index]
-            destination.sections = [[songs[index]],[]]
+            let song: Song
+            
+            if isFiltering {
+                song = searchResults[index]
+            }
+            else {
+                song = songs[index]
+            }
+            destination.title = song.title
+            destination.fromSong = song
+            destination.sections = [[song],[]]
         }
     }
+    
+    // Helper function to get song objects from 'songs' list
+    func getSongByName(title: String) -> Song? {
+        for song in songs {
+            if song.title == title {
+                return song
+            }
+        }
+        return nil
+    }
+    
+}
+
+extension SongsListViewController: UISearchResultsUpdating {
+    // Called when the user enters text in the search bar
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchBar = searchController.searchBar
+        filterContentForSearchText(searchBar.text!)
+  }
 }
 

@@ -23,6 +23,7 @@ class TransitionManager {
     private init() {
     }
     
+    // Creates 'transitions' table if it doesn't already exist
     func connect() {
         if database != nil {
             return
@@ -59,6 +60,7 @@ class TransitionManager {
         }
     }
     
+    // Insets a transition from song 'from' to song 'to' into the databse
     func insertTransition(from: Song, to: Song) -> Int {
         connect()
         var statement: OpaquePointer? = nil
@@ -84,6 +86,7 @@ class TransitionManager {
         return Int(sqlite3_last_insert_rowid(database))
     }
     
+    // Deletes a transition from song 'from' to song 'to' from the databse
     func deleteTransition(from: Song, to: Song) {
         connect()
         var statement: OpaquePointer? = nil
@@ -108,6 +111,7 @@ class TransitionManager {
         
     }
     
+    // Returns a list of songs that the song 'from' transitions to, according to the databse, ordered by the song's title
     func getNextSongs(from: Song) -> [Song] {
         connect()
         var result: [Song] = []
@@ -120,6 +124,7 @@ class TransitionManager {
             albums ON songs.album_id = albums.id JOIN
             transitions ON songs.id = transitions.to_id
             WHERE transitions.from_id = ?
+            ORDER BY songs.title ASC
             """,
             -1,
             &statement,
@@ -136,6 +141,7 @@ class TransitionManager {
         return result
     }
     
+    // 'Opposite' of getNextSongs, returns a list of all songs that song 'from' has not yet been recorded as transitioning to
     func getPossisbleTransitions(from: Song) -> [Song] {
         connect()
         var result: [Song] = []
@@ -147,6 +153,7 @@ class TransitionManager {
             songs JOIN artists ON songs.artist_id = artists.id JOIN
             albums ON songs.album_id = albums.id
             WHERE songs.id NOT IN (SELECT to_id FROM transitions WHERE from_id = ?)
+            ORDER BY songs.title ASC
             """
             ,
             -1,

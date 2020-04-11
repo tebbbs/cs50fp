@@ -8,6 +8,7 @@
 
 import UIKit
 
+// Represents the song cell in all the tabels
 class SongTableViewCell: UITableViewCell {
     @IBOutlet var titleLabel: UILabel!
     @IBOutlet var infoLabel: UILabel!

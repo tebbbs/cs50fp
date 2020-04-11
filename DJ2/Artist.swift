@@ -22,6 +22,7 @@ class ArtistManager {
     private init() {
     }
     
+    // Creates 'artists' table if it doesn't already exist
     func connect() {
         if database != nil {
             return

@@ -8,22 +8,24 @@
 
 import UIKit
 
+// Controls view for adding transitions for a given song
 class AddTransitionViewController: UITableViewController {
     
     var fromSong: Song!
     var prevTracks: [Song]!
     var sections: [[Song]]!
+    let sectionHeaders = ["From", "To"]
     
     let prevTrack = 0
     let candidates = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Add new transition"
         reload()
 
     }
     
+    // Adds all songs which don't already have a transition from the current song and which haven't already been transitioned from in the 'set'
     func reload() {
         sections = [[],[]]
         sections[prevTrack].append(fromSong)
@@ -38,13 +40,14 @@ class AddTransitionViewController: UITableViewController {
     }
     
     override func numberOfSections(in tableView: UITableView) -> Int {
-        return 2
+        return sections.count
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return sections[section].count
     }
     
+    // Prevents the user from trying to add a transition from a song to itself
     override func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
         if indexPath.section == candidates {
             return indexPath
@@ -54,13 +57,17 @@ class AddTransitionViewController: UITableViewController {
         }
     }
     
-    
+    // Sets up song sells for displays on table
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         tableView.rowHeight = 72
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "SongCell", for: indexPath) as! SongTableViewCell
-
         
+        if indexPath.section == 0 {
+            cell.accessoryType = .none
+            cell.selectionStyle = .none
+        }
+
         cell.titleLabel.text = sections[indexPath.section][indexPath.row].title
         cell.infoLabel.text = "\(sections[indexPath.section][indexPath.row].artist.name) | \(sections[indexPath.section][indexPath.row].album.title)"
         cell.yearLabel.text = String(sections[indexPath.section][indexPath.row].year)
@@ -68,33 +75,14 @@ class AddTransitionViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if section == prevTrack {
-            return "From"
-        }
-        else if section == candidates {
-            return "To"
-        }
-        else {
-            return nil
-        }
+        return sectionHeaders[section]
     }
     
+    // Updates the database with the new transition the user has created, and returns to the previous view
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         TransitionManager.shared.insertTransition(from: fromSong, to: sections[candidates][indexPath.row])
         if let navController = self.navigationController {
             navController.popViewController(animated: true)
         }
     }
-    
-    /*
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        if segue.identifier == "BackToTransitionsSegue",
-                let destination = segue.destination as? TransitionsListViewController {
-            destination.title = fromSong.title
-            destination.fromSong = fromSong
-            destination.sections = [prevTracks, []]
-        }
-    }
-    */
 }

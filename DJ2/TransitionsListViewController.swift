@@ -11,28 +11,22 @@ import UIKit
 class TransitionsListViewController: UITableViewController {
     
     var fromSong: Song!
-
     var sections: [[Song]]!
+    let sectionHeaders = ["Tracks Played", "Up Next"]
+    
     let history = 0
     let candidates = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // allSongs[0] = history, allSongs[1] = nextSongs
-        //allSongs[0].append(fromSong)
-        
         reload()
-        //for song in nextSongs {
-        for song in sections[candidates] {
-            print(song.title)
-        }
     }
     
+    // Shows all possible transitions from a song, excluding songs already 'played'
     func reload() {
         sections[candidates] = TransitionManager.shared.getNextSongs(from: fromSong)
         let prevTracks = sections[history]
-        sections[candidates].removeAll(where: {prevTracks.contains($0) } )
+        sections[candidates].removeAll(where:  {prevTracks.contains($0) } )
         tableView.reloadData()
     }
     
@@ -49,6 +43,17 @@ class TransitionsListViewController: UITableViewController {
         return sections[section].count
     }
     
+    // Prevents songs that are not possible transitions from being selected
+    override func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
+        if indexPath.section == candidates {
+            return indexPath
+        }
+        else {
+            return nil
+        }
+    }
+    
+    // Sets up song sells for displays on table
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         tableView.rowHeight = 72
         
@@ -66,17 +71,10 @@ class TransitionsListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if section == history {
-            return "Tracks played"
-        }
-        else if section == candidates {
-            return "Up next"
-        }
-        else {
-            return nil
-        }
+        return sectionHeaders[section]
     }
     
+    // Prevents songs from the 'Played' section from being deleted as they do not represent transitions
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         if (indexPath.section != history) {
             return true
@@ -86,6 +84,7 @@ class TransitionsListViewController: UITableViewController {
         }
     }
     
+    // Deletes transitions for a given song
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             TransitionManager.shared.deleteTransition(from: fromSong, to: sections[candidates][indexPath.row])
@@ -94,19 +93,12 @@ class TransitionsListViewController: UITableViewController {
         }
     }
     
-    override func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
-        if indexPath.section == candidates {
-            return indexPath
-        }
-        else {
-            return nil
-        }
-    }
-    
+    // Returns to the 'Library' view, discarding 'Tracks Played'
     @IBAction func backToLibrary() {
         self.navigationController?.popToRootViewController(animated: true)
     }
     
+    // Either prepares another TransitionsListViewController with the selected song, or segues to the AddTransitionViewController to allow the user to add more transitions for the current song
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
         if segue.identifier == "NextTransitionSegue",            
@@ -125,6 +117,7 @@ class TransitionsListViewController: UITableViewController {
             title: "Back", style: .plain, target: nil, action: nil)
             destination.prevTracks = sections[history]
             destination.fromSong = fromSong
+            destination.title = "Add new transition"
         }
     }
 }

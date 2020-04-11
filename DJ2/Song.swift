@@ -19,7 +19,6 @@ struct Song: Equatable {
     let title: String
     let artist: Artist
     let album: Album
-    // find better datatype for year
     let year: Int
 }
 
@@ -31,6 +30,8 @@ class SongManager {
     private init() {
         
     }
+    
+    // Creates 'songs' table if it doesn't already exist
     func connect() {
         if database != nil {
             return
@@ -70,10 +71,11 @@ class SongManager {
         }
        
     }
-        
+    
+    // Inserts a new song into the database, and returns the id of the new song
     func insertSong(title: String, artist: String, album: String, year: Int) -> Int{
         let artistID = ArtistManager.shared.getArtistID(name: artist)
-        // We will assume that song year = album year for this app
+        // We will assume that song year = album year for this app, although this could be improved upon
         let albumID = AlbumManager.shared.getAlbumID(title: album, artist: artist, year: year)
         connect()
         var statement: OpaquePointer? = nil
@@ -100,6 +102,7 @@ class SongManager {
         return Int(sqlite3_last_insert_rowid(database))
     }
     
+    // Return a list of all song objects represented in the database in ascending order by title
     func getSongs() -> [Song] {
         connect()
         var result: [Song] = []
@@ -110,6 +113,7 @@ class SongManager {
             SELECT songs.id, songs.title, artists.id, artists.name, albums.id, albums.title, songs.year FROM
             songs JOIN artists ON songs.artist_id = artists.id JOIN
             albums ON songs.album_id = albums.id
+            ORDER BY songs.title ASC
             
             """,
             -1,
@@ -117,15 +121,7 @@ class SongManager {
             nil
             ) == SQLITE_OK {
                 while sqlite3_step(statement) == SQLITE_ROW {
-                    let year = Int(sqlite3_column_int(statement, 6))
-                    let artist = Artist(id: Int(sqlite3_column_int(statement, 2)), name: String(cString: sqlite3_column_text(statement, 3)))
-                    result.append(Song(
-                        id: Int(sqlite3_column_int(statement, 0)),
-                        title: String(cString: sqlite3_column_text(statement, 1)),
-                        artist: artist,
-                        album: Album(id: Int(sqlite3_column_int(statement, 4)), title: String(cString: sqlite3_column_text(statement, 5)), artist: artist, year: year),
-                        year: year
-                    ))
+                    result.append(parseSong(statement: statement!))
                 }
             }
         
@@ -133,6 +129,7 @@ class SongManager {
         return result
     }
     
+    // Removes a song from the database
     func delete(song: Song) {
         connect()
         var statement: OpaquePointer? = nil
@@ -155,6 +152,7 @@ class SongManager {
         
     }
     
+    // Returns a new song obect, constracted from the result of a sqlite3 query
     func parseSong(statement: OpaquePointer) -> Song {
         let year = Int(sqlite3_column_int(statement, 6))
         let artist = Artist(id: Int(sqlite3_column_int(statement, 2)), name: String(cString: sqlite3_column_text(statement, 3)))

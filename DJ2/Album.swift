@@ -24,7 +24,7 @@ class AlbumManager {
     
     private init() {
     }
-    
+    // Creates 'album' table if it doesn't already exist
     func connect() {
         if database != nil {
             return
@@ -62,6 +62,7 @@ class AlbumManager {
         }
     }
     
+    // Inserts a new album in to the database
     func insertAlbum(title: String, artist: String, year: Int) -> Int {
         let artistID = ArtistManager.shared.getArtistID(name: artist)
         connect()
@@ -89,6 +90,7 @@ class AlbumManager {
         
     }
     
+    // Retrieves an album ID from the databse given its properties as strings
     func getAlbumID(title: String, artist: String, year: Int) -> Int {
         connect()
         var statement: OpaquePointer? = nil
